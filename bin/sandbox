@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+readonly operation="${1:-}"
+
+case "$operation" in
+  create|reset|delete) deadline=10 ;;
+  wait-ready|collect) deadline=5 ;;
+  run) deadline=10 ;;
+  status) deadline=2 ;;
+  *)
+    echo "usage: bin/sandbox <create|wait-ready|run|reset|collect|status|delete> ..." >&2
+    exit 2
+    ;;
+esac
+
+export PYTHONDONTWRITEBYTECODE=1
+export RANGE_INTERVIEW_DEADLINE_SECONDS="$((deadline - 1))"
+exec sudo --preserve-env=RANGE_INTERVIEW_FAULT,RANGE_INTERVIEW_DEADLINE_SECONDS \
+  timeout --foreground --signal=KILL "${deadline}s" \
+  python3 "$repo_root/runtime/sandbox.py" "$@"

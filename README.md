@@ -11,7 +11,7 @@ The public assessment is defined by:
 
 The scoring rubric, evaluator cases, reference solutions, and calibration material are private and have no shared Git ancestry with this repository. Candidates receive only the requirements needed to understand and operate the exercise.
 
-The runnable lab will be added as a later independently reviewable milestone. Until a release is explicitly tagged, the assessment is under construction and must not be issued to candidates.
+The deliberately incomplete runtime is described in [`STARTER.md`](STARTER.md). Until a release is explicitly tagged, the assessment is under construction and must not be issued to candidates.
 
 Local environment development uses the pinned disposable Linux image:
 
