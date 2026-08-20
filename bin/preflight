@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly netns_name="ri-preflight-$$"
+readonly cgroup_root="/sys/fs/cgroup/range-interview"
+readonly cgroup_probe="$cgroup_root/preflight-$$"
+readonly nft_table="range_interview"
+nft_created=false
+
+cleanup() {
+  sudo ip netns delete "$netns_name" >/dev/null 2>&1 || true
+  if [[ "$nft_created" == "true" ]]; then
+    sudo nft delete table inet "$nft_table" >/dev/null 2>&1 || true
+  fi
+  if [[ -d "$cgroup_probe" ]]; then
+    sudo rmdir "$cgroup_probe" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+fail() {
+  echo "preflight: $*" >&2
+  exit 1
+}
+
+[[ "$(uname -s)" == "Linux" ]] || fail "Linux is required"
+[[ "$(stat -fc %T /sys/fs/cgroup)" == "cgroup2fs" ]] || fail "cgroup v2 is required"
+sudo -n true || fail "passwordless sudo is required inside the disposable environment"
+
+for tool in conntrack curl ip jq nft nsenter python3 setpriv ss sudo tcpdump unshare; do
+  command -v "$tool" >/dev/null || fail "missing required tool: $tool"
+done
+
+sudo install -d -m 0775 -o candidate -g candidate \
+  /run/range-interview \
+  /var/lib/range-interview/state
+sudo install -d -m 0755 -o root -g root /var/lib/range-interview/evidence
+[[ ! -w /var/lib/range-interview/evidence ]] || fail "candidate can write the evidence projection"
+
+sudo ip netns add "$netns_name"
+sudo ip -n "$netns_name" link set lo up
+sudo ip -n "$netns_name" link show lo >/dev/null
+
+sudo mkdir -p "$cgroup_root"
+sudo mkdir "$cgroup_probe"
+[[ -f "$cgroup_probe/cgroup.procs" ]] || fail "cannot create a delegated cgroup v2 subtree"
+
+sudo nft add table inet "$nft_table"
+nft_created=true
+sudo nft list table inet "$nft_table" >/dev/null
+sudo conntrack -L -f ipv4 >/dev/null 2>&1 || fail "cannot inspect IPv4 conntrack state"
+
+python3 - <<'PY'
+import json
+import platform
+
+print(json.dumps({
+    "status": "ok",
+    "kernel": platform.release(),
+    "machine": platform.machine(),
+    "cgroup": "v2",
+}, sort_keys=True))
+PY

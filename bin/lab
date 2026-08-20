@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly repo_root="$(git rev-parse --show-toplevel)"
+readonly image_name="${RANGE_INTERVIEW_IMAGE:-range-runtime-interview:dev}"
+
+usage() {
+  cat <<'EOF'
+usage: bin/lab <build|shell|preflight|image-id>
+EOF
+}
+
+require_docker() {
+  command -v docker >/dev/null || {
+    echo "docker is required" >&2
+    exit 1
+  }
+  docker info >/dev/null
+}
+
+require_disposable_host() {
+  if [[ "$(uname -s)" != "Darwin" && "${RANGE_INTERVIEW_ACK_DISPOSABLE_VM:-}" != "1" ]]; then
+    cat >&2 <<'EOF'
+refusing to start the privileged lab container on an unconfirmed Linux host
+run only when the Linux host itself is a throwaway VM, then acknowledge it with RANGE_INTERVIEW_ACK_DISPOSABLE_VM=1
+EOF
+    exit 1
+  fi
+}
+
+run_container() {
+  local interactive="$1"
+  shift
+  local -a tty_args=()
+  if [[ "$interactive" == "true" ]]; then
+    tty_args=(-it)
+  fi
+
+  docker run --rm "${tty_args[@]}" \
+    --privileged \
+    --cgroupns=private \
+    --sysctl net.ipv4.ip_forward=1 \
+    --hostname=range-interview \
+    --mount "type=bind,src=${repo_root},dst=/workspace" \
+    --tmpfs /run:rw,nosuid,nodev,mode=755 \
+    --tmpfs /tmp:rw,nosuid,nodev,mode=1777 \
+    --workdir /workspace \
+    "$image_name" "$@"
+}
+
+case "${1:-}" in
+  build)
+    require_docker
+    docker build \
+      --file "$repo_root/environment/Dockerfile" \
+      --tag "$image_name" \
+      "$repo_root/environment"
+    ;;
+  shell)
+    require_docker
+    require_disposable_host
+    run_container true bash
+    ;;
+  preflight)
+    require_docker
+    require_disposable_host
+    run_container false ./bin/preflight
+    ;;
+  image-id)
+    require_docker
+    docker image inspect --format '{{.Id}}' "$image_name"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
