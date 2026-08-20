@@ -27,3 +27,5 @@ bin/sandbox status partial
 That create must return nonzero without leaving sandbox resources. The variable is for verification only; solutions must not depend on it during normal operation.
 
 You may make a focused repair or replace the internals. Keep `bin/sandbox` operations and their observable meanings stable. Do not edit fixtures to redefine the expected result.
+
+Run `bin/verify` for public feedback against representative contract outcomes. It reports only observable requirement categories and contains no scoring weights, score bands, hidden parameters, or preferred repair.

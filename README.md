@@ -21,6 +21,8 @@ bin/lab preflight
 bin/lab shell
 ```
 
+Inside the disposable Linux shell, run `bin/preflight` before the timer and `bin/verify` while working. The public verifier is a feedback tool: it reports contract outcomes only and contains no points, weights, score bands, private cases, or preferred implementation. Formal evaluation uses an external, read-only checker with varied contract-conforming inputs. Modifying the public verifier, its probes, or its fixtures is unsupported and cannot establish a formal pass. Complete [`SUBMISSION.md`](SUBMISSION.md) at the two-hour boundary.
+
 The supplied lab is the Linux container started by `bin/lab`. It is not a VM or a security boundary. The wrapper uses Docker `--privileged`, giving the container broad capabilities and device access so it can create namespaces, cgroups, interfaces, and packet-filter rules. The sandbox lifecycle itself remains ordinary Linux processes and kernel primitives rather than Docker APIs.
 
 Use the wrapper only with a rootful Docker-compatible engine and cgroup v2. On macOS, the engine already runs inside its own Linux VM. On Linux, the Docker host itself must be a dedicated throwaway VM acknowledged with `RANGE_INTERVIEW_ACK_DISPOSABLE_VM=1`; that variable describes the outer host, not the lab container, and is not VM attestation. Never run a candidate submission directly on a general-purpose Linux host. Formal evaluation runs the privileged lab container on a fresh disposable worker and stores verdict evidence outside the candidate-controlled container.
