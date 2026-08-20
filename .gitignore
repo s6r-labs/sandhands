@@ -1,0 +1,14 @@
+.DS_Store
+.direnv/
+.env
+.env.*
+!.env.example
+artifacts/
+result/
+tmp/
+*.log
+*.pid
+*.sock
+__pycache__/
+*.py[cod]
+
